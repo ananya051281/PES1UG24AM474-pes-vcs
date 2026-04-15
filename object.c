@@ -104,6 +104,14 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
 
     memcpy(full, header, header_len);
     memcpy(full + header_len, data, len);
+    unsigned char hash[32];
+    unsigned int hash_len;
+
+    EVP_Digest(full, total_len, hash, &hash_len, EVP_sha256(), NULL);
+
+    for (int i = 0; i < 32; i++) {
+       sprintf(id_out->hash + i * 2, "%02x", hash[i]);
+}
 
     free(full);
     return 0;
