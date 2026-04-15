@@ -221,8 +221,10 @@ int commit_create(const char *message, ObjectID *commit_id_out) {
     // Update HEAD
     char commit_hex[HASH_HEX_SIZE + 1];
     hash_to_hex(&commit_id, commit_hex);
+    mkdir(".pes/refs", 0755);
+mkdir(".pes/refs/heads", 0755);
 
-    FILE *f = fopen(".pes/HEAD", "w");
+    FILE *f = fopen(".pes/refs/heads/main", "w");
     if (!f) return -1;
 
     fprintf(f, "%s\n", commit_hex);
