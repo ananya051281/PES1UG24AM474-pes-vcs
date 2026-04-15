@@ -9,7 +9,7 @@
 // Example single entry (conceptual):
 //   "100644 hello.txt\0" followed by 32 raw bytes of SHA-256
 
-//git add tree.c "Phase 2: cleanup and finalize tree module"
+//git add tree.c git add tree.c "final touch and verification"
 
 #include "tree.h"
 #include "index.h"
