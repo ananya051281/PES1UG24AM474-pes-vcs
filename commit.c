@@ -196,7 +196,7 @@ int head_update(const ObjectID *new_commit) {
 int commit_create(const char *message, ObjectID *commit_id_out) {
     ObjectID tree_id;
 
-    // Build tree
+    // Build tree from index
     if (tree_from_index(&tree_id) != 0)
         return -1;
 
@@ -215,20 +215,29 @@ int commit_create(const char *message, ObjectID *commit_id_out) {
     if (object_write(OBJ_COMMIT, buffer, strlen(buffer), &commit_id) != 0)
         return -1;
 
-    // Return commit id
+    // Return commit ID
     *commit_id_out = commit_id;
 
-    // Update HEAD
+    // Convert commit hash to hex
     char commit_hex[HASH_HEX_SIZE + 1];
     hash_to_hex(&commit_id, commit_hex);
+
+    // Ensure directories exist
+    mkdir(".pes", 0755);
     mkdir(".pes/refs", 0755);
-mkdir(".pes/refs/heads", 0755);
+    mkdir(".pes/refs/heads", 0755);
 
-    FILE *f = fopen(".pes/refs/heads/main", "w");
-    if (!f) return -1;
+    // Write branch reference
+    FILE *ref = fopen(".pes/refs/heads/main", "w");
+    if (!ref) return -1;
+    fprintf(ref, "%s\n", commit_hex);
+    fclose(ref);
 
-    fprintf(f, "%s\n", commit_hex);
-    fclose(f);
+    // Ensure HEAD points to main branch
+    FILE *head = fopen(".pes/HEAD", "w");
+    if (!head) return -1;
+    fprintf(head, "ref: refs/heads/main\n");
+    fclose(head);
 
     return 0;
 }
