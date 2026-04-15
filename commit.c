@@ -194,50 +194,49 @@ int head_update(const ObjectID *new_commit) {
 //
 // Returns 0 on success, -1 on error.
 int commit_create(const char *message, ObjectID *commit_id_out) {
-    ObjectID tree_id;
+    Commit commit;
+    memset(&commit, 0, sizeof(commit));
 
-    // Build tree from index
-    if (tree_from_index(&tree_id) != 0)
+    // 1. Build tree
+    if (tree_from_index(&commit.tree) != 0)
         return -1;
 
-    // Convert tree hash to hex
-    char tree_hex[HASH_HEX_SIZE + 1];
-    hash_to_hex(&tree_id, tree_hex);
+    // 2. Try to get parent commit
+    ObjectID parent_id;
+    if (head_read(&parent_id) == 0) {
+        commit.parent = parent_id;
+        commit.has_parent = 1;
+    } else {
+        commit.has_parent = 0;
+    }
 
-    // Build commit content
-    char buffer[1024];
-    snprintf(buffer, sizeof(buffer),
-             "tree %s\n\n%s\n",
-             tree_hex, message);
+    // 3. Set author + timestamp
+    snprintf(commit.author, sizeof(commit.author), "%s", pes_author());
+    commit.timestamp = (uint64_t)time(NULL);
 
-    // Write commit object
+    // 4. Set message
+    snprintf(commit.message, sizeof(commit.message), "%s", message);
+
+    // 5. Serialize commit
+    void *data;
+    size_t len;
+    if (commit_serialize(&commit, &data, &len) != 0)
+        return -1;
+
+    // 6. Write commit object
     ObjectID commit_id;
-    if (object_write(OBJ_COMMIT, buffer, strlen(buffer), &commit_id) != 0)
+    if (object_write(OBJ_COMMIT, data, len, &commit_id) != 0) {
+        free(data);
         return -1;
+    }
+    free(data);
 
-    // Return commit ID
+    // 7. Return commit ID
     *commit_id_out = commit_id;
 
-    // Convert commit hash to hex
-    char commit_hex[HASH_HEX_SIZE + 1];
-    hash_to_hex(&commit_id, commit_hex);
-
-    // Ensure directories exist
-    mkdir(".pes", 0755);
-    mkdir(".pes/refs", 0755);
-    mkdir(".pes/refs/heads", 0755);
-
-    // Write branch reference
-    FILE *ref = fopen(".pes/refs/heads/main", "w");
-    if (!ref) return -1;
-    fprintf(ref, "%s\n", commit_hex);
-    fclose(ref);
-
-    // Ensure HEAD points to main branch
-    FILE *head = fopen(".pes/HEAD", "w");
-    if (!head) return -1;
-    fprintf(head, "ref: refs/heads/main\n");
-    fclose(head);
+    // 8. Update HEAD properly (THIS IS THE KEY FIX)
+    if (head_update(&commit_id) != 0)
+        return -1;
 
     return 0;
 }
